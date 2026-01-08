@@ -7,9 +7,72 @@
 import { readFile, writeFile, mkdir, access } from 'fs/promises';
 import { constants as fsConstants } from 'fs';
 import { dirname } from 'path';
-import { ACCOUNT_CONFIG_PATH } from '../constants.js';
+import {
+    ACCOUNT_CONFIG_PATH,
+    ENV_ACCOUNTS,
+    ENV_REFRESH_TOKEN,
+    ENV_EMAIL,
+    ENV_PROJECT_ID
+} from '../constants.js';
 import { getAuthStatus } from '../auth/database.js';
 import { logger } from '../utils/logger.js';
+
+/**
+ * Load accounts from environment variables
+ * Supports two formats:
+ * 1. ANTIGRAVITY_ACCOUNTS: JSON array of accounts
+ * 2. ANTIGRAVITY_REFRESH_TOKEN: Single account with optional EMAIL and PROJECT_ID
+ *
+ * @returns {{accounts: Array, settings: Object, activeIndex: number} | null}
+ */
+export function loadAccountsFromEnv() {
+    // Try JSON array format first
+    const accountsJson = process.env[ENV_ACCOUNTS];
+    if (accountsJson) {
+        try {
+            const parsed = JSON.parse(accountsJson);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                const accounts = parsed.map(acc => ({
+                    email: acc.email || 'env-account@proxy',
+                    source: 'oauth',
+                    refreshToken: acc.refreshToken,
+                    projectId: acc.projectId || null,
+                    addedAt: new Date().toISOString(),
+                    lastUsed: null,
+                    isInvalid: false,
+                    invalidReason: null,
+                    modelRateLimits: {}
+                }));
+                logger.info(`[AccountManager] Loaded ${accounts.length} account(s) from ${ENV_ACCOUNTS} environment variable`);
+                return { accounts, settings: {}, activeIndex: 0 };
+            }
+        } catch (error) {
+            logger.error(`[AccountManager] Failed to parse ${ENV_ACCOUNTS}:`, error.message);
+        }
+    }
+
+    // Try single account format
+    const refreshToken = process.env[ENV_REFRESH_TOKEN];
+    if (refreshToken) {
+        const email = process.env[ENV_EMAIL] || 'env-account@proxy';
+        const projectId = process.env[ENV_PROJECT_ID] || null;
+        const account = {
+            email,
+            source: 'oauth',
+            refreshToken,
+            projectId,
+            addedAt: new Date().toISOString(),
+            lastUsed: null,
+            isInvalid: false,
+            invalidReason: null,
+            modelRateLimits: {}
+        };
+        logger.info(`[AccountManager] Loaded account from ${ENV_REFRESH_TOKEN} environment variable: ${email}`);
+        return { accounts: [account], settings: {}, activeIndex: 0 };
+    }
+
+    return null;
+}
 
 /**
  * Load accounts from the config file

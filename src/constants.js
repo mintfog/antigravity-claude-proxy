@@ -78,6 +78,12 @@ export const DEFAULT_COOLDOWN_MS = 10 * 1000; // 10 second default cooldown
 export const MAX_RETRIES = 5; // Max retry attempts across accounts
 export const MAX_ACCOUNTS = 10; // Maximum number of accounts allowed
 
+// Environment variable names for account configuration
+export const ENV_ACCOUNTS = 'ANTIGRAVITY_ACCOUNTS';           // JSON array of accounts
+export const ENV_REFRESH_TOKEN = 'ANTIGRAVITY_REFRESH_TOKEN'; // Single account refresh token
+export const ENV_EMAIL = 'ANTIGRAVITY_EMAIL';                 // Single account email (optional)
+export const ENV_PROJECT_ID = 'ANTIGRAVITY_PROJECT_ID';       // Single account project ID (optional)
+
 // Rate limit wait thresholds
 export const MAX_WAIT_BEFORE_ERROR_MS = 120000; // 2 minutes - throw error if wait exceeds this
 
@@ -250,6 +256,10 @@ export default {
     DEFAULT_COOLDOWN_MS,
     MAX_RETRIES,
     MAX_ACCOUNTS,
+    ENV_ACCOUNTS,
+    ENV_REFRESH_TOKEN,
+    ENV_EMAIL,
+    ENV_PROJECT_ID,
     MAX_WAIT_BEFORE_ERROR_MS,
     MIN_SIGNATURE_LENGTH,
     GEMINI_MAX_OUTPUT_TOKENS,

@@ -101,6 +101,24 @@ npm run accounts:add -- --no-browser
 
 This displays an OAuth URL you can open on another device (phone/laptop). After signing in, copy the redirect URL or authorization code and paste it back into the terminal.
 
+**Option C: Environment Variables (Docker/Containers)**
+
+For containerized deployments (Docker, Zeabur, Railway, etc.), configure accounts via environment variables:
+
+```bash
+# Single account mode
+ANTIGRAVITY_REFRESH_TOKEN=your_refresh_token
+ANTIGRAVITY_EMAIL=your_email@gmail.com  # Optional, defaults to env-account@proxy
+ANTIGRAVITY_PROJECT_ID=your_project_id   # Optional
+
+# Multi-account mode (JSON array)
+ANTIGRAVITY_ACCOUNTS='[{"email":"user1@gmail.com","refreshToken":"token1"},{"email":"user2@gmail.com","refreshToken":"token2"}]'
+```
+
+To get your `refresh_token`, run `npm run accounts:add -- --no-browser` locally, then copy the token from `~/.config/antigravity-proxy/accounts.json`.
+
+**Account loading priority:** Config file → Environment variables → Antigravity database
+
 #### Manage accounts
 
 ```bash

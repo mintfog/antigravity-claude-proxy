@@ -5,7 +5,7 @@
  */
 
 import { ACCOUNT_CONFIG_PATH } from '../constants.js';
-import { loadAccounts, loadDefaultAccount, saveAccounts } from './storage.js';
+import { loadAccounts, loadAccountsFromEnv, loadDefaultAccount, saveAccounts } from './storage.js';
 import {
     isAllRateLimited as checkAllRateLimited,
     getAvailableAccounts as getAvailable,
@@ -57,12 +57,20 @@ export class AccountManager {
         this.#settings = settings;
         this.#currentIndex = activeIndex;
 
-        // If config exists but has no accounts, fall back to Antigravity database
+        // If config has no accounts, try environment variables first
         if (this.#accounts.length === 0) {
-            logger.warn('[AccountManager] No accounts in config. Falling back to Antigravity database');
-            const { accounts: defaultAccounts, tokenCache } = loadDefaultAccount();
-            this.#accounts = defaultAccounts;
-            this.#tokenCache = tokenCache;
+            const envResult = loadAccountsFromEnv();
+            if (envResult && envResult.accounts.length > 0) {
+                this.#accounts = envResult.accounts;
+                this.#settings = envResult.settings;
+                this.#currentIndex = envResult.activeIndex;
+            } else {
+                // Fall back to Antigravity database
+                logger.warn('[AccountManager] No accounts in config or env. Falling back to Antigravity database');
+                const { accounts: defaultAccounts, tokenCache } = loadDefaultAccount();
+                this.#accounts = defaultAccounts;
+                this.#tokenCache = tokenCache;
+            }
         }
 
         // Clear any expired rate limits
