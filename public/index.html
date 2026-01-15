@@ -252,9 +252,8 @@
     </div>
 
     <!-- Add Account Modal -->
-    <dialog id="add_account_modal" class="modal backdrop-blur-sm">
-        <div class="modal-box max-w-lg w-full bg-space-900 border border-space-border text-gray-300 shadow-[0_0_50px_rgba(0,0,0,0.5)] p-6"
-             x-data="addAccountModal">
+    <dialog id="add_account_modal" class="modal backdrop-blur-sm" x-data="addAccountModal">
+        <div class="modal-box max-w-lg w-full bg-space-900 border border-space-border text-gray-300 shadow-[0_0_50px_rgba(0,0,0,0.5)] p-6">
             <h3 class="font-bold text-lg text-white mb-4" x-text="$store.global.t('addAccount')">Add New Account</h3>
 
             <div class="flex flex-col gap-4">
@@ -342,12 +341,12 @@
 
             <div class="modal-action mt-6">
                 <form method="dialog">
-                    <button type="submit" class="btn btn-ghost hover:bg-white/10" x-text="$store.global.t('close')">Close</button>
+                    <button type="submit" class="btn btn-ghost hover:bg-white/10" @click="resetState()" x-text="$store.global.t('close')">Close</button>
                 </form>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
-            <button type="button" x-text="$store.global.t('close')">close</button>
+            <button type="button" @click="resetState()" x-text="$store.global.t('close')">close</button>
         </form>
     </dialog>
 

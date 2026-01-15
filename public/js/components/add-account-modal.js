@@ -11,6 +11,20 @@ window.Components.addAccountModal = () => ({
     callbackInput: '',
     submitting: false,
 
+    /**
+     * Reset all state to initial values
+     */
+    resetState() {
+        this.manualMode = false;
+        this.authUrl = '';
+        this.authState = '';
+        this.callbackInput = '';
+        this.submitting = false;
+        // Close any open details elements
+        const details = document.querySelectorAll('#add_account_modal details[open]');
+        details.forEach(d => d.removeAttribute('open'));
+    },
+
     async copyLink() {
         if (!this.authUrl) return;
         await navigator.clipboard.writeText(this.authUrl);
@@ -32,7 +46,7 @@ window.Components.addAccountModal = () => ({
                     this.authState = data.state;
                 }
             } catch (e) {
-                Alpine.store('global').showToast(e.message, 'error'); // Add error handling just in case
+                Alpine.store('global').showToast(e.message, 'error');
             }
         }
     },
@@ -61,9 +75,7 @@ window.Components.addAccountModal = () => ({
                 store.showToast(store.t('accountAddedSuccess'), 'success');
                 Alpine.store('data').fetchData();
                 document.getElementById('add_account_modal').close();
-                this.callbackInput = '';
-                this.authUrl = '';
-                this.authState = '';
+                this.resetState();
             } else {
                 store.showToast(data.error || store.t('authFailed'), 'error');
             }
