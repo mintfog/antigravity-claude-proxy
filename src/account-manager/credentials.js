@@ -159,8 +159,9 @@ export async function discoverProject(token) {
                 return data.cloudaicompanionProject.id;
             }
 
-            // No project found - try to onboard the user
+            // No project found - log tier data and try to onboard the user
             logger.info(`[AccountManager] No project in loadCodeAssist response, attempting onboardUser...`);
+            logger.debug(`[AccountManager] Tier data for onboarding: paidTier=${JSON.stringify(data.paidTier)}, currentTier=${JSON.stringify(data.currentTier)}, allowedTiers=${JSON.stringify(data.allowedTiers?.map(t => ({ id: t?.id, isDefault: t?.isDefault })))}`);
             break;
         } catch (error) {
             lastError = error.message;
@@ -170,10 +171,34 @@ export async function discoverProject(token) {
 
     // If we got a successful response but no project, try onboarding
     if (gotSuccessfulResponse && loadCodeAssistData) {
-        const tierId = getDefaultTierId(loadCodeAssistData.allowedTiers) || 'FREE';
-        logger.info(`[AccountManager] Onboarding user with tier: ${tierId}`);
+        // Priority: paidTier > currentTier > allowedTiers (consistent with model-api.js)
+        let tierId = null;
+        let tierSource = null;
 
-        const onboardedProject = await onboardUser(token, tierId);
+        if (loadCodeAssistData.paidTier?.id) {
+            tierId = loadCodeAssistData.paidTier.id;
+            tierSource = 'paidTier';
+        } else if (loadCodeAssistData.currentTier?.id) {
+            tierId = loadCodeAssistData.currentTier.id;
+            tierSource = 'currentTier';
+        } else {
+            tierId = getDefaultTierId(loadCodeAssistData.allowedTiers);
+            tierSource = 'allowedTiers';
+        }
+
+        tierId = tierId || 'free-tier';
+        logger.info(`[AccountManager] Onboarding user with tier: ${tierId} (source: ${tierSource})`);
+
+        // Check if this is a free tier (raw API values contain 'free')
+        const isFree = tierId.toLowerCase().includes('free');
+
+        // For non-free tiers, pass DEFAULT_PROJECT_ID as the GCP project
+        // The API requires a project for paid tier onboarding
+        const onboardedProject = await onboardUser(
+            token,
+            tierId,
+            isFree ? null : DEFAULT_PROJECT_ID
+        );
         if (onboardedProject) {
             logger.success(`[AccountManager] Successfully onboarded, project: ${onboardedProject}`);
             return onboardedProject;

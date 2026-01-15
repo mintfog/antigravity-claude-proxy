@@ -185,6 +185,9 @@ export async function getSubscriptionTier(token) {
 
             const data = await response.json();
 
+            // Debug: Log all tier-related fields from the response
+            logger.debug(`[CloudCode] loadCodeAssist tier data: paidTier=${JSON.stringify(data.paidTier)}, currentTier=${JSON.stringify(data.currentTier)}, allowedTiers=${JSON.stringify(data.allowedTiers?.map(t => ({ id: t?.id, isDefault: t?.isDefault })))}`);
+
             // Extract project ID
             let projectId = null;
             if (typeof data.cloudaicompanionProject === 'string') {
@@ -201,22 +204,20 @@ export async function getSubscriptionTier(token) {
             // Note: paidTier is sometimes missing from the response even for Pro accounts
             let tier = 'unknown';
             let tierId = null;
+            let tierSource = null;
 
             // 1. Check paidTier first (Google One AI subscription - most reliable)
             if (data.paidTier?.id) {
                 tierId = data.paidTier.id;
-                const lower = tierId.toLowerCase();
-                if (lower.includes('ultra')) {
-                    tier = 'ultra';
-                } else if (lower.includes('pro')) {
-                    tier = 'pro';
-                }
+                tier = parseTierId(tierId);
+                tierSource = 'paidTier';
             }
 
             // 2. Fall back to currentTier if paidTier didn't give us a tier
             if (tier === 'unknown' && data.currentTier?.id) {
                 tierId = data.currentTier.id;
                 tier = parseTierId(tierId);
+                tierSource = 'currentTier';
             }
 
             // 3. Fall back to allowedTiers (find the default or first non-free tier)
@@ -229,10 +230,11 @@ export async function getSubscriptionTier(token) {
                 if (defaultTier?.id) {
                     tierId = defaultTier.id;
                     tier = parseTierId(tierId);
+                    tierSource = 'allowedTiers';
                 }
             }
 
-            logger.debug(`[CloudCode] Subscription detected: ${tier} (tierId: ${tierId}), Project: ${projectId}`);
+            logger.debug(`[CloudCode] Subscription detected: ${tier} (tierId: ${tierId}, source: ${tierSource}), Project: ${projectId}`);
 
             return { tier, projectId };
         } catch (error) {
