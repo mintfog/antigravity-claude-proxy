@@ -921,6 +921,7 @@ document.addEventListener('alpine:init', () => {
                 importFailed: "İçe aktarma başarısız",
             },
         },
+        translations: window.translations || {},
 
         // Toast Messages
         toast: null,
