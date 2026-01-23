@@ -13,6 +13,7 @@ document.addEventListener('alpine:init', () => {
         modelConfig: {}, // Model metadata (hidden, pinned, alias)
         quotaRows: [], // Filtered view
         usageHistory: {}, // Usage statistics history (from /account-limits?includeHistory=true)
+        maxAccounts: 10, // Maximum number of accounts allowed (from config)
         loading: false,
         initialLoad: true, // Track first load for skeleton screen
         connectionStatus: 'connecting',

@@ -17,7 +17,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import { getPublicConfig, saveConfig, config } from '../config.js';
-import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH } from '../constants.js';
+import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH, MAX_ACCOUNTS } from '../constants.js';
 import { readClaudeConfig, updateClaudeConfig, replaceClaudeConfig, getClaudeConfigPath, readPresets, savePreset, deletePreset } from '../utils/claude-config.js';
 import { logger } from '../utils/logger.js';
 import { getAuthorizationUrl, completeOAuthFlow, startCallbackServer } from '../auth/oauth.js';
@@ -77,6 +77,7 @@ async function removeAccount(email) {
 
 /**
  * Add new account to config
+ * @throws {Error} If MAX_ACCOUNTS limit is reached (for new accounts only)
  */
 async function addAccount(accountData) {
     const { accounts, settings, activeIndex } = await loadAccounts(ACCOUNT_CONFIG_PATH);
@@ -95,6 +96,10 @@ async function addAccount(accountData) {
         };
         logger.info(`[WebUI] Account ${accountData.email} updated`);
     } else {
+        // Check MAX_ACCOUNTS limit before adding new account
+        if (accounts.length >= MAX_ACCOUNTS) {
+            throw new Error(`Maximum of ${MAX_ACCOUNTS} accounts reached. Update maxAccounts in config to increase the limit.`);
+        }
         // Add new account
         accounts.push({
             ...accountData,
@@ -122,8 +127,9 @@ function createAuthMiddleware() {
 
         // Determine if this path should be protected
         const isApiRoute = req.path.startsWith('/api/');
-        const isException = req.path === '/api/auth/url' || req.path === '/api/config';
-        const isProtected = (isApiRoute && !isException) || req.path === '/account-limits' || req.path === '/health';
+        const isAuthUrl = req.path === '/api/auth/url';
+        const isConfigGet = req.path === '/api/config' && req.method === 'GET';
+        const isProtected = (isApiRoute && !isAuthUrl && !isConfigGet) || req.path === '/account-limits' || req.path === '/health';
 
         if (isProtected) {
             const providedPassword = req.headers['x-webui-password'] || req.query.password;
@@ -388,7 +394,7 @@ export function mountWebUI(app, dirname, accountManager) {
      */
     app.post('/api/config', (req, res) => {
         try {
-            const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, accountSelection } = req.body;
+            const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts, accountSelection, rateLimitDedupWindowMs, maxConsecutiveFailures, extendedCooldownMs, capacityRetryDelayMs, maxCapacityRetries } = req.body;
 
             // Only allow updating specific fields (security)
             const updates = {};
@@ -413,6 +419,24 @@ export function mountWebUI(app, dirname, accountManager) {
             }
             if (typeof maxWaitBeforeErrorMs === 'number' && maxWaitBeforeErrorMs >= 0 && maxWaitBeforeErrorMs <= 600000) {
                 updates.maxWaitBeforeErrorMs = maxWaitBeforeErrorMs;
+            }
+            if (typeof maxAccounts === 'number' && maxAccounts >= 1 && maxAccounts <= 100) {
+                updates.maxAccounts = maxAccounts;
+            }
+            if (typeof rateLimitDedupWindowMs === 'number' && rateLimitDedupWindowMs >= 1000 && rateLimitDedupWindowMs <= 30000) {
+                updates.rateLimitDedupWindowMs = rateLimitDedupWindowMs;
+            }
+            if (typeof maxConsecutiveFailures === 'number' && maxConsecutiveFailures >= 1 && maxConsecutiveFailures <= 10) {
+                updates.maxConsecutiveFailures = maxConsecutiveFailures;
+            }
+            if (typeof extendedCooldownMs === 'number' && extendedCooldownMs >= 10000 && extendedCooldownMs <= 300000) {
+                updates.extendedCooldownMs = extendedCooldownMs;
+            }
+            if (typeof capacityRetryDelayMs === 'number' && capacityRetryDelayMs >= 500 && capacityRetryDelayMs <= 10000) {
+                updates.capacityRetryDelayMs = capacityRetryDelayMs;
+            }
+            if (typeof maxCapacityRetries === 'number' && maxCapacityRetries >= 1 && maxCapacityRetries <= 10) {
+                updates.maxCapacityRetries = maxCapacityRetries;
             }
             // Account selection strategy validation
             if (accountSelection && typeof accountSelection === 'object') {
