@@ -311,6 +311,10 @@ export function mountWebUI(app, dirname, accountManager) {
 
             const results = { added: [], updated: [], failed: [] };
 
+            // Load existing accounts once before the loop
+            const { accounts: existingAccounts } = await loadAccounts(ACCOUNT_CONFIG_PATH);
+            const existingEmails = new Set(existingAccounts.map(a => a.email));
+
             for (const acc of importAccounts) {
                 try {
                     // Validate required fields
@@ -330,8 +334,7 @@ export function mountWebUI(app, dirname, accountManager) {
                     }
 
                     // Check if account already exists
-                    const { accounts: existingAccounts } = await loadAccounts(ACCOUNT_CONFIG_PATH);
-                    const exists = existingAccounts.some(e => e.email === acc.email);
+                    const exists = existingEmails.has(acc.email);
 
                     // Add account
                     await addAccount({
